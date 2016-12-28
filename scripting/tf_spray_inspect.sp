@@ -1,5 +1,7 @@
 /**
  * [TF2] Spray Inspect
+ * 
+ * Display an annotation when inspecting sprays.
  */
 #pragma semicolon 1
 #include <sourcemod>
@@ -9,7 +11,7 @@
 #pragma newdecls required
 #include <stocksoup/tf/annotations>
 
-#define PLUGIN_VERSION "0.0.3"
+#define PLUGIN_VERSION "0.1.0"
 public Plugin myinfo = {
 	name = "[TF2] Spray Inspect",
 	author = "nosoop",
@@ -29,7 +31,18 @@ public Plugin myinfo = {
 int g_bSprayActive[MAXPLAYERS+1];
 float g_vecSprayOrigin[MAXPLAYERS+1][3];
 
+ConVar g_WallDistanceThreshold, g_AimDistanceThreshold, g_InspectDuration;
+
 public void OnPluginStart() {
+	g_WallDistanceThreshold = CreateConVar("spray_inspect_max_wall_distance", "300.0",
+			"Maximum distance a wall can be from a player for spray inspection.");
+	g_AimDistanceThreshold = CreateConVar("spray_inspect_max_aim_distance", "50.0",
+			"Maximum distance a spray can be from the cursor for inspection.");
+	g_InspectDuration = CreateConVar("spray_inspect_duration", "5.0",
+			"Amount of time the spray annotation is displayed.");
+	
+	AutoExecConfig(true);
+	
 	AddTempEntHook("Player Decal", OnPlayerDecalCreated);
 }
 
@@ -56,17 +69,20 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 		float vecWallPoint[3], vecEyePosition[3];
 		GetClientEyePosition(client, vecEyePosition);
 		
+		float flWallThreshold = Pow(g_WallDistanceThreshold.FloatValue, 2.0);
+		
 		// Only attempt to inspect spray if wall isn't too far
-		// TODO add distance threshold or empty for "no distance limit"
 		if (GetWallFromEyePosition(client, vecWallPoint)
-				&& GetVectorDistance(vecWallPoint, vecEyePosition, true) <= Pow(300.0, 2.0)) {
+				&& GetVectorDistance(vecWallPoint, vecEyePosition, true) <= flWallThreshold) {
+			float flSprayThreshold = Pow(g_AimDistanceThreshold.FloatValue, 2.0);
 			for (int i = 1; i <= MaxClients; i++) {
 				if (!IsClientInGame(i) || !g_bSprayActive[client]) {
 					continue;
 				}
 				
 				// TODO cycle through stacked sprays
-				if (GetVectorDistance(vecWallPoint, g_vecSprayOrigin[i]) <= 50.0) {
+				if (GetVectorDistance(vecWallPoint, g_vecSprayOrigin[i], true)
+						<= flSprayThreshold) {
 					float vecAnnotation[3];
 					AddVectors(NULL_VECTOR, g_vecSprayOrigin[i], vecAnnotation);
 					
@@ -77,7 +93,8 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 					Format(sprayMessage, sizeof(sprayMessage), "Sprayed by %N", i);
 					
 					TF2_ShowPositionalAnnotationToClient(client, vecAnnotation, sprayMessage,
-							SPRAY_ANNOTATION_ID_OFFSET + client);
+							SPRAY_ANNOTATION_ID_OFFSET + client, _,
+							g_InspectDuration.FloatValue);
 					
 					return Plugin_Handled;
 				}
