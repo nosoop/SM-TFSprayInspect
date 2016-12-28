@@ -11,7 +11,7 @@
 #pragma newdecls required
 #include <stocksoup/tf/annotations>
 
-#define PLUGIN_VERSION "0.1.0"
+#define PLUGIN_VERSION "0.1.1"
 public Plugin myinfo = {
 	name = "[TF2] Spray Inspect",
 	author = "nosoop",
@@ -35,11 +35,11 @@ ConVar g_WallDistanceThreshold, g_AimDistanceThreshold, g_InspectDuration;
 
 public void OnPluginStart() {
 	g_WallDistanceThreshold = CreateConVar("spray_inspect_max_wall_distance", "300.0",
-			"Maximum distance a wall can be from a player for spray inspection.");
+			"Maximum distance a wall can be from a player for spray inspection.", _, true, 0.0);
 	g_AimDistanceThreshold = CreateConVar("spray_inspect_max_aim_distance", "50.0",
-			"Maximum distance a spray can be from the cursor for inspection.");
+			"Maximum distance a spray can be from the cursor for inspection.", _, true, 0.0);
 	g_InspectDuration = CreateConVar("spray_inspect_duration", "5.0",
-			"Amount of time the spray annotation is displayed.");
+			"Amount of time the spray annotation is displayed.", _, true, 0.0);
 	
 	AutoExecConfig(true);
 	
