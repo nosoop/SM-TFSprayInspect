@@ -9,7 +9,7 @@
 #pragma newdecls required
 #include <stocksoup/tf/annotations>
 
-#define PLUGIN_VERSION "0.0.2"
+#define PLUGIN_VERSION "0.0.3"
 public Plugin myinfo = {
 	name = "[TF2] Spray Inspect",
 	author = "nosoop",
@@ -53,9 +53,13 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 	
 	// TODO check command access for "spray_inspect"
 	if (StrEqual(command, "+inspect_server")) {
-		float vecWallPoint[3];
+		float vecWallPoint[3], vecEyePosition[3];
+		GetClientEyePosition(client, vecEyePosition);
 		
-		if (GetWallFromEyePosition(client, vecWallPoint)) {
+		// Only attempt to inspect spray if wall isn't too far
+		// TODO add distance threshold or empty for "no distance limit"
+		if (GetWallFromEyePosition(client, vecWallPoint)
+				&& GetVectorDistance(vecWallPoint, vecEyePosition, true) <= Pow(300.0, 2.0)) {
 			for (int i = 1; i <= MaxClients; i++) {
 				if (!IsClientInGame(i) || !g_bSprayActive[client]) {
 					continue;
