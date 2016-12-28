@@ -9,7 +9,7 @@
 #pragma newdecls required
 #include <stocksoup/tf/annotations>
 
-#define PLUGIN_VERSION "0.0.1"
+#define PLUGIN_VERSION "0.0.2"
 public Plugin myinfo = {
 	name = "[TF2] Spray Inspect",
 	author = "nosoop",
@@ -18,13 +18,19 @@ public Plugin myinfo = {
 	url = "https://github.com/nosoop/SM-TFSprayInspect"
 }
 
+/**
+ * Annotation IDs must be unique to the annotation -- if you fire another annotation event with
+ * the same ID, existing annotations on other clients may be replaced.
+ * 
+ * We use a specific offset to ensure each client gets their own annotation ID for sprays.
+ */
+#define SPRAY_ANNOTATION_ID_OFFSET 0xDABBAD00
+
 int g_bSprayActive[MAXPLAYERS+1];
 float g_vecSprayOrigin[MAXPLAYERS+1][3];
 
 public void OnPluginStart() {
 	AddTempEntHook("Player Decal", OnPlayerDecalCreated);
-	
-	// AddCommandListener(OnPlayerInspect, "+inspect");
 }
 
 public Action OnPlayerDecalCreated(const char[] name, int[] clients, int nClients,
@@ -66,7 +72,8 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 					char sprayMessage[128];
 					Format(sprayMessage, sizeof(sprayMessage), "Sprayed by %N", i);
 					
-					TF2_ShowPositionalAnnotationToClient(client, vecAnnotation, sprayMessage);
+					TF2_ShowPositionalAnnotationToClient(client, vecAnnotation, sprayMessage,
+							SPRAY_ANNOTATION_ID_OFFSET + client);
 					
 					return Plugin_Handled;
 				}
