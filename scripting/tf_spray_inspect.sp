@@ -11,7 +11,7 @@
 #pragma newdecls required
 #include <stocksoup/tf/annotations>
 
-#define PLUGIN_VERSION "0.1.1"
+#define PLUGIN_VERSION "0.2.0"
 public Plugin myinfo = {
 	name = "[TF2] Spray Inspect",
 	author = "nosoop",
@@ -64,8 +64,7 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 	char command[64];
 	kv.GetSectionName(command, sizeof(command));
 	
-	// TODO check command access for "spray_inspect"
-	if (StrEqual(command, "+inspect_server")) {
+	if (StrEqual(command, "+inspect_server") && CanInspectSpray(client)) {
 		float vecWallPoint[3], vecEyePosition[3];
 		GetClientEyePosition(client, vecEyePosition);
 		
@@ -75,22 +74,34 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 		if (GetWallFromEyePosition(client, vecWallPoint)
 				&& GetVectorDistance(vecWallPoint, vecEyePosition, true) <= flWallThreshold) {
 			float flSprayThreshold = Pow(g_AimDistanceThreshold.FloatValue, 2.0);
-			for (int i = 1; i <= MaxClients; i++) {
-				if (!IsClientInGame(i) || !g_bSprayActive[client]) {
+			for (int source = 1; source <= MaxClients; source++) {
+				if (!IsClientInGame(source) || !g_bSprayActive[source]) {
 					continue;
 				}
 				
 				// TODO cycle through stacked sprays
-				if (GetVectorDistance(vecWallPoint, g_vecSprayOrigin[i], true)
+				if (GetVectorDistance(vecWallPoint, g_vecSprayOrigin[source], true)
 						<= flSprayThreshold) {
 					float vecAnnotation[3];
-					AddVectors(NULL_VECTOR, g_vecSprayOrigin[i], vecAnnotation);
+					AddVectors(NULL_VECTOR, g_vecSprayOrigin[source], vecAnnotation);
 					
 					// Offset annotation so spray is visible
 					vecAnnotation[2] += 32.0;
 					
 					char sprayMessage[128];
-					Format(sprayMessage, sizeof(sprayMessage), "Sprayed by %N", i);
+					if (CanGetSprayDetails(client)) {
+						char authId[32];
+						GetClientAuthId(source, AuthId_Steam3, authId, sizeof(authId));
+						
+						Format(sprayMessage, sizeof(sprayMessage), "Sprayed by %N\n%s (#%d)",
+								source, authId, GetClientUserId(source));
+						
+						// For easy reading when banning through console
+						PrintToConsole(client, "Inspected spray of %N (steamid %s, userid %d)",
+								source, authId, GetClientUserId(source));
+					} else {
+						Format(sprayMessage, sizeof(sprayMessage), "Sprayed by %N", source);
+					}
 					
 					TF2_ShowPositionalAnnotationToClient(client, vecAnnotation, sprayMessage,
 							SPRAY_ANNOTATION_ID_OFFSET + client, _,
@@ -103,6 +114,14 @@ public Action OnClientCommandKeyValues(int client, KeyValues kv) {
 	}
 	
 	return Plugin_Continue;
+}
+
+bool CanInspectSpray(int client) {
+	return CheckCommandAccess(client, "spray_inspect", 0);
+}
+
+bool CanGetSprayDetails(int client) {
+	return CheckCommandAccess(client, "spray_inspect_detailed", ADMFLAG_KICK | ADMFLAG_BAN);
 }
 
 bool GetWallFromEyePosition(int client, float vecPoint[3]) {
